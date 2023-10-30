@@ -5,11 +5,15 @@
 
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include "opencv2/gpu/gpu.hpp"
+// #include "opencv2/gpu/gpu.hpp"
+#include <opencv2/core/cuda.hpp>
+#include <opencv2/cudaoptflow.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 using namespace std;
 using namespace cv;
-using namespace cv::gpu;
+// using namespace cv::gpu;
+using namespace cv::cuda;
 
 inline bool isFlowCorrect(Point2f u)
 {
@@ -156,7 +160,7 @@ static void showFlow(const char* name, const GpuMat& d_flowx, const GpuMat& d_fl
     if (out.empty()) {
         cout << "error loading image";
     } else{ 
-        namedWindow(name, CV_WINDOW_AUTOSIZE);
+        namedWindow(name, WINDOW_AUTOSIZE);
         imshow(name, out);
         waitKey(0);
         imwrite( "convo.jpg", out);
@@ -194,16 +198,24 @@ int main(int argc, const char* argv[])
     GpuMat d_frame0(frame0);
     GpuMat d_frame1(frame1);
 
-    GpuMat d_flowx(frame0.size(), CV_32FC1);
-    GpuMat d_flowy(frame0.size(), CV_32FC1);
+    // GpuMat d_flowx(frame0.size(), CV_32FC1);
+    // GpuMat d_flowy(frame0.size(), CV_32FC1);
 
     //OpticalFlowDual_TVL1_GPU tvl1;
-    BroxOpticalFlow brox(0.197f, 50.0f, 0.8f, 10, 77, 10);
+    // BroxOpticalFlow brox(0.197f, 50.0f, 0.8f, 10, 77, 10); // jwj: changed due to Opencv 2.4 -> 4.x
+    Ptr<BroxOpticalFlow> brox = BroxOpticalFlow::create(0.197f, 50.0f, 0.8f, 10, 77, 10);
     GpuMat d_frame0f;
     GpuMat d_frame1f;
     d_frame0.convertTo(d_frame0f, CV_32F, 1.0 / 255.0);
     d_frame1.convertTo(d_frame1f, CV_32F, 1.0 / 255.0);
-    brox(d_frame0f, d_frame1f, d_flowx, d_flowy);
+    // brox(d_frame0f, d_frame1f, d_flowx, d_flowy); // jwj: changed due to Opencv 2.4 -> 4.x
+    GpuMat d_flow(frame0.size(), CV_32FC2);
+    brox->calc(d_frame0f, d_frame1f, d_flow);
+    vector<GpuMat> channels(2);
+    split(d_flow, channels);
+    GpuMat d_flowx = channels[0];
+    GpuMat d_flowy = channels[1];
+
 
     saveFlow(d_flowx, d_flowy, "dx.txt", "dy.txt");
 
