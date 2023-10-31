@@ -7,9 +7,9 @@ import random
 import json
 
 from PIL import Image
-from build_vocab import Vocabulary
-from build_vocab import build_vocab
-from build_annotation import Annotation
+from utils.build_vocab import Vocabulary
+from utils.build_vocab import build_vocab
+from utils.build_annotation import Annotation
 import os
 import argparse
 
@@ -79,17 +79,21 @@ def getPair(imroot, hroot, oproot, path, vocab, index):
 	else:
 		file = open(hroot + "/" + path + "/h" + str(index - 2) + ".txt")
 		h = file.read().split()
-		h = map(float, h)
+		h = list(map(float, h))
 
-	with open(oproot + "/" + path + "/imxx" + str(index) + ".txt", 'r') as f:
+	# with open(oproot + "/" + path + "/imxx" + str(index) + ".txt", 'r') as f:
+	with open(oproot + "/" + path + "/imxx" + str(index) + "_keypoints.json", 'r') as f:
 		js = json.loads(f.read())
-		if ('joints' not in js) or (len(js['joints']) <= 0):
-			pose2 = [0] * 48
+		# if ('joints' not in js) or (len(js['joints']) <= 0):
+		if ('people' in js) and (len(js['people'])>0) and ('pose_keypoints_2d' in js['people'][0]) and (len(js['people'][0]['pose_keypoints_2d']) > 0):
+			# pose2 = js['joints']
+			pose2 = js['people'][0]['pose_keypoints_2d']
 		else:
-			pose2 = js['joints']
+			# pose2 = [0] * 48
+			pose2 = [0] * 75
 	upp_cluster = vocab.upp_ids[path][index-1]
 	low_cluster = vocab.low_ids[path][index-1]
-	path = path + "/imxx" + str(index) + ".jpg";
+	path = path + "/imxx" + str(index) + ".jpg"
 	image = Image.open(os.path.join(imroot, path)).convert('RGB')
 	return image, upp_cluster, low_cluster, h, pose2
 
